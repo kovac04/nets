@@ -27,10 +27,8 @@ def compute_gradient(x,y,w,b):
     m = len(x)      
     for i in range(m):
         y_pred = forward(w,x[i],b)
-        w_temp = x[i]*(y_pred - y[i]) #dj/dw
-        b_temp = (y_pred - y[i])    #dj/db
-        dj_dw += w_temp
-        dj_db += b_temp
+        dj_dw += x[i]*(y_pred - y[i]) #dj/dw
+        dj_db += (y_pred - y[i])    #dj/db
     return dj_dw/m, dj_db/m
     
 
