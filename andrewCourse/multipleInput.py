@@ -29,19 +29,19 @@ cost1 = cost(X_train, y_train, w_init, b_init)
 print(f'Cost at optimal w : {cost1}')
 
 
-def compute_gradient(x,y,w,b):
+def compute_gradient(X,y,w,b):
     m = len(X_train)         #(number of examples)
     n = len(X_train[0])         #(number of features)
     dj_dw = np.zeros((n,))      
     dj_db = 0.
     for i in range(m):   #go through each training example                          
-        err = (forward(w,x[i],b) - y[i]) #same as (y_pred - y[i]), still doing it for each example
+        err = (np.dot(X[i],w)+b - y[i]) #same as (y_pred - y[i]), still doing it for each example
         for j in range(n):    #go through all features                     
-            dj_dw[j] += err * x[i, j] #similar to dj_dw += x[i]*(y_pred - y[i]) / gradient formula
+            dj_dw[j] += err * X[i, j] #similar to dj_dw += x[i]*(y_pred - y[i]) / gradient formula
                                     #need to add it for all features too, not just examples
         dj_db += err     #dj_db = err/ y_pred-y / formula / just add all of them to get the average
-    dj_dw = dj_dw / m                          
-    dj_db = dj_db / m                                
+    dj_dw /= m                          
+    dj_db /= m                                
         
     return dj_db, dj_dw
 

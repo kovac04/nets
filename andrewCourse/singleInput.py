@@ -39,7 +39,7 @@ def gradient_descent(x, y, w, b, alpha):
     J_history = []
     p_history = []
     
-    for i in range(10000):
+    for i in range(100):
         # Calculate the gradient and update the parameters using gradient_function
         dj_dw, dj_db = compute_gradient(x, y, w , b)     
 
@@ -48,7 +48,7 @@ def gradient_descent(x, y, w, b, alpha):
         w = w - alpha * dj_dw                            
 
         # Save cost J at each iteration
-        if i<100000:      # prevent resource exhaustion 
+        if i<100:      # prevent resource exhaustion 
             J_history.append( loss(x, y, w, b))
             p_history.append([w,b])
  
@@ -57,7 +57,7 @@ def gradient_descent(x, y, w, b, alpha):
 # initialize parameters
 w_init = 0
 b_init = 0
-tmp_alpha = 0.01
+tmp_alpha = 0.4
 # run gradient descent
 w_final, b_final, J_hist, p_hist = gradient_descent(x ,y, w_init, b_init, tmp_alpha)
 print(f"(w,b) found by gradient descent: ({w_final:8.4f},{b_final:8.4f})")
