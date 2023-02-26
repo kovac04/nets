@@ -5,8 +5,9 @@ from lab_utils_multi import  load_house_data
 
 #plt.style.use('./deeplearning.mplstyle')
 np.set_printoptions(precision=2)  # reduced display precision on numpy arrays
-
-X_train, y_train = load_house_data()
+#used to have better training data but need function and textfile "loadhouses.txt" from coursera
+X_train = np.array([[2104, 5, 1, 45], [1416, 3, 2, 40], [852, 2, 1, 35]])
+y_train = np.array([460, 232, 178])
 b_init = 3.6
 w_init = np.array([ 8.9, 3, 3.3, -6.0])
 alpha = 1.0e-1
@@ -29,11 +30,10 @@ def compute_gradient(X,y,w,b):
     dj_dw = np.zeros((n,))      
     dj_db = 0.
     for i in range(m):   #go through each training example                          
-        err = (np.dot(X[i],w)+b - y[i]) #same as (y_pred - y[i]), still doing it for each example
         for j in range(n):    #go through all features                     
-            dj_dw[j] += err * X[i, j] #similar to dj_dw += x[i]*(y_pred - y[i]) / gradient formula
+            dj_dw[j] += (np.dot(X[i],w)+b - y[i]) * X[i, j] #similar to dj_dw += x[i]*(y_pred - y[i]) / gradient formula
                                     #need to add it for all features too, not just examples
-        dj_db += err     #dj_db = err/ y_pred-y / formula / just add all of them to get the average
+        dj_db += (np.dot(X[i],w)+b) - y[i]  #dj_db = y_pred-y / formula / just add all of them to get the average
     dj_dw /= m                          
     dj_db /= m                                
         
