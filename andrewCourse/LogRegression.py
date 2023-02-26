@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import copy
 
 X = np.array([[0.5, 1.5], [1,1], [1.5, 0.5], [3, 0.5], [2, 2], [1, 2.5]])
@@ -47,3 +47,8 @@ print(f"Optimal w = {w_new}\nOptimal b = {b_new}")
 old_cost = computeCost(w,X,b,y)
 new_cost = computeCost(w_new,X,b_new,y)
 print(f"\nOld cost = {old_cost}\nNew cost = {new_cost}")
+
+predict = forward(w_new,[3.2,0.9],b_new)
+print(f"\n{predict}")
+
+
