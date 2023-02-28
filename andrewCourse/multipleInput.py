@@ -1,7 +1,6 @@
 import copy, math
 import numpy as np
 import matplotlib.pyplot as plt
-from lab_utils_multi import  load_house_data
 
 #plt.style.use('./deeplearning.mplstyle')
 np.set_printoptions(precision=2)  # reduced display precision on numpy arrays
@@ -9,8 +8,9 @@ np.set_printoptions(precision=2)  # reduced display precision on numpy arrays
 X_train = np.array([[2104, 5, 1, 45], [1416, 3, 2, 40], [852, 2, 1, 35]])
 y_train = np.array([460, 232, 178])
 b_init = 3.6
-w_init = np.array([ 8.9, 3, 3.3, -6.0])
-alpha = 1.0e-1
+w_init = np.array([8.9, 3, 3.3, -6.0])
+alpha = 0.01
+lamb = 0.00001
 
 def forward(w,x,b):
     return np.dot(w,x) + b
@@ -22,11 +22,20 @@ def cost(x,y,w,b):
     for i in range(m):
         y_pred = forward(w,x[i],b) #forward all features together, get pred
         cost+= (y_pred - y[i])**2   #same cost function as before
-    return cost/(2*m)
+    cost /= (2*m)
+
+    reg_cost = 0
+    for j in range(len(w)): #(λ/2m)*∑(Wj)^2 regularize all weights
+        reg_cost += (w[j]**2)
+    reg_cost*=(lamb/2*m)
+        
+    total_cost = reg_cost + cost
+    return total_cost
+
 
 def compute_gradient(X,y,w,b):
     m = len(X_train)         #(number of examples)
-    n = len(X_train[0])         #(number of features)
+    n = len(w)         #(number of features)
     dj_dw = np.zeros((n,))      
     dj_db = 0.
     for i in range(m):   #go through each training example                          
@@ -36,7 +45,10 @@ def compute_gradient(X,y,w,b):
         dj_db += (np.dot(X[i],w)+b) - y[i]  #dj_db = y_pred-y / formula / just add all of them to get the average
     dj_dw /= m                          
     dj_db /= m                                
-        
+    
+    for j in range(n):      #regularized
+        dj_dw += w[j]*(lamb/m)
+
     return dj_dw, dj_db
 
 
@@ -74,9 +86,11 @@ X_norm, mu, sigma = zScoreNormalize(X_train) #normalize the inputs
 w_norm, b_norm, J_hist, p_hist = gradient_descent(X_norm, y_train, w_init, b_init)
 print(f"\nOptimal w and b = {w_norm} , {b_norm}")
 
-x_unknown = [1200, 3, 1, 40]
-x_unknown_norm  = (x_unknown - mu) / sigma # z score normalize 
-print(f"Predicted price of a house with 1200 sqft, 3 bedrooms, 1 floor, 40 years old = ${forward(w_norm,x_unknown_norm,b_norm)*1000:0.0f}")
+old_cost = cost(X_train,y_train,w_init,b_init)
+new_cost = cost(X_norm,y_train,w_norm,b_norm)
+print(f"Old cost = {old_cost}")
+print(f"New cost = {new_cost}")
+
 
 # plot cost versus iteration  
 fig, (ax1, ax2) = plt.subplots(1, 2, constrained_layout=True, figsize=(7, 4))

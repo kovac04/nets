@@ -7,6 +7,7 @@ y = np.array([0, 0, 0, 1, 1, 1]).reshape(-1,1)
 w = np.array([0,0])
 b = 0
 alpha = 0.1
+lamb = 0.00001
 
 def forward(w,X,b):
     z = np.dot(w,X) + b
@@ -16,10 +17,21 @@ def forward(w,X,b):
 
 def computeCost(w,X,b,y):   #new cost function
     cost = 0
+    m = len(X)
+
     for i in range(len(X)):    
         y_pred = forward(w,X[i],b)
-        cost +=  -y[i]*np.log(y_pred) - (1-y[i])*np.log(1-y_pred)
-    return cost/len(X)
+        cost +=  -(y[i]*np.log(y_pred) + (1-y[i])*np.log(1-y_pred)) #normal cost function
+
+    cost/=m
+
+    reg_cost = 0                #(λ/2m)*∑(Wj)^2 regularize all weights
+    for j in range(len(w)):
+        reg_cost += (w[j]**2)
+    reg_cost *= (lamb/(2*m)) 
+
+    total_cost = cost + reg_cost
+    return total_cost
 
 def computeGradient(w,X,b,y):
     dj_dw = np.zeros((len(X[0]),))
@@ -30,7 +42,12 @@ def computeGradient(w,X,b,y):
             dj_dw[j] += X[i,j]*(y_pred - y[i])
         dj_db += (y_pred - y[i])
 
-    return dj_dw/len(X),dj_db/len(X)
+    dj_dw/=len(X)
+    dj_db/=len(X)
+    for j in range(len(w)):         #regularized
+        dj_dw[j] += w[j]*(lamb/len(w))      
+
+    return dj_dw,dj_db
 
 def gradientDescent(w,X,b,y):
     w_deep= copy.deepcopy(w)
