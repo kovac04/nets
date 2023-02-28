@@ -4,8 +4,8 @@ import copy
 
 X = np.array([[0.5, 1.5], [1,1], [1.5, 0.5], [3, 0.5], [2, 2], [1, 2.5]])
 y = np.array([0, 0, 0, 1, 1, 1]).reshape(-1,1)
-w = np.array([0,0])
-b = 0
+w = np.array([2,2])
+b = 4
 alpha = 0.1
 lamb = 0.00001
 
@@ -35,7 +35,7 @@ def computeCost(w,X,b,y):   #new cost function
 
 def computeGradient(w,X,b,y):
     dj_dw = np.zeros((len(X[0]),))
-    dj_db = 0
+    dj_db = 0.0
     for i in range(len(X)):
         y_pred = forward(w,X[i],b)
         for j in range(len(X[i])):
@@ -45,7 +45,7 @@ def computeGradient(w,X,b,y):
     dj_dw/=len(X)
     dj_db/=len(X)
     for j in range(len(w)):         #regularized
-        dj_dw[j] += w[j]*(lamb/len(w))      
+        dj_dw[j] += w[j]*(lamb/len(X))      
 
     return dj_dw,dj_db
 
