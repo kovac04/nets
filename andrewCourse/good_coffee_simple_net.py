@@ -31,12 +31,8 @@ norm_X_tensor = layer_norm(X_tensor)
 norm_X_np = norm_X_tensor.detach().numpy()           #convert normalized inputs back to numpy
 
 def myLinear(a_in,W,b):
-    units = W.shape[1]
-    a_out = np.zeros(units)                         
-    for j in range(units):                      #units = columns of 'W' matrix      
-        w = W[:,j]                                       #go through columns of 'W' to get weights for each of the neurons
-        z = np.dot(w, a_in) + b[j]                      #get wx+b
-        a_out[j] = tc.sigmoid(tc.tensor(z))             #sigmoid(wx+b)  for each neuron
+    z = a_in @ W + b
+    a_out = tc.sigmoid(tc.tensor(z).float())             #sigmoid(wx+b)  for each neuron
     return a_out 
 
 def mySequential(x, W1, b1, W2, b2):        #instead of calling each layer separately, you can sequentially execute them with proper inputs for each layer
@@ -44,8 +40,8 @@ def mySequential(x, W1, b1, W2, b2):        #instead of calling each layer separ
     a2 = myLinear(a1, W2, b2)
     return a2
 
-W1_tmp = np.array( [[-8.93,  0.29, 12.9 ], [-0.1,  -7.32, 10.81]] )
-b1_tmp = np.array( [-9.82, -9.28,  0.96] )
+W1_tmp = np.array( [[-8.93,-0.1],[0.29,-7.32],[12.9,10.8]] ).T     #weights for 3 neurons, each represented in columns
+b1_tmp = np.array( [-9.82, -9.28,  0.96] )                          #can add to W because of np.broadcast
 W2_tmp = np.array( [[-31.18], [-27.59], [-32.56]] )
 b2_tmp = np.array( [15.41] )
 
@@ -70,3 +66,4 @@ yhat = np.zeros_like(predictions)
 yhat = (predictions >= 0.5).astype(int)
 print(f"\npredictions = \n{predictions[0]},{predictions[1]}")
 print(f"decisions = \n{yhat}")
+
