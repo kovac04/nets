@@ -1,6 +1,7 @@
 import torch
 import time
 import numpy as np
+from tinygrad.tensor import Tensor
 
 N = 4096
 
