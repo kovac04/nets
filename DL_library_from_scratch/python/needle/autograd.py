@@ -1,10 +1,8 @@
 """Core data structures."""
-from backend_numpy import Device, cpu, all_devices
+import needle
 from typing import List, Optional, NamedTuple, Tuple, Union, Dict
 from collections import namedtuple
 import numpy
-import init
-import ops
 
 # needle version
 LAZY_MODE = False
@@ -13,8 +11,35 @@ TENSOR_COUNTER = 0
 # NOTE: we will import numpy as the array_api
 # as the backend for our computations, this line will change in later homeworks
 import numpy as array_api
-
 NDArray = numpy.ndarray
+
+
+class Device:
+    """Indicates the device supporting an NDArray."""
+
+
+class CPUDevice(Device):
+    """Represents data that sits in CPU"""
+
+    def __repr__(self):
+        return "needle.cpu()"
+
+    def __hash__(self):
+        return self.__repr__().__hash__()
+
+    def __eq__(self, other):
+        return isinstance(other, CPUDevice)
+
+    def enabled(self):
+        return True
+
+def cpu():
+    """Return cpu device"""
+    return CPUDevice()
+
+def all_devices():
+    """return a list of all available devices"""
+    return [cpu()]
 
 
 class Op:
@@ -61,7 +86,7 @@ class Op:
         raise NotImplementedError()
 
     def gradient_as_tuple(self, out_grad: "Value", node: "Value") -> Tuple["Value"]:
-        """Convenience method to always return a tuple from gradient call"""
+        """ Convenience method to always return a tuple from gradient call"""
         output = self.gradient(out_grad, node)
         if isinstance(output, tuple):
             return output
@@ -72,7 +97,7 @@ class Op:
 
 
 class TensorOp(Op):
-    """Op class specialized to output tensors, will be alternate subclasses for other structures"""
+    """ Op class specialized to output tensors, will be alternate subclasses for other structures """
 
     def __call__(self, *args):
         return Tensor.make_from_op(self, args)
@@ -105,6 +130,7 @@ class Value:
         self.cached_data = self.op.compute(
             *[x.realize_cached_data() for x in self.inputs]
         )
+        self.cached_data
         return self.cached_data
 
     def is_leaf(self):
@@ -168,7 +194,7 @@ class TensorTuple(Value):
         return len(cdata)
 
     def __getitem__(self, index: int):
-        return ops.tuple_get_item(self, index)
+        return needle.ops.tuple_get_item(self, index)
 
     def tuple(self):
         return tuple([x for x in self])
@@ -182,7 +208,7 @@ class TensorTuple(Value):
     def __add__(self, other):
         assert isinstance(other, TensorTuple)
         assert len(self) == len(other)
-        return ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
+        return needle.ops.make_tuple(*[self[i] + other[i] for i in range(len(self))])
 
     def detach(self):
         """Create a new tensor that shares the data but detaches from the graph."""
@@ -235,8 +261,6 @@ class Tensor(Value):
         tensor = Tensor.__new__(Tensor)
         tensor._init(op, inputs)
         if not LAZY_MODE:
-            if not tensor.requires_grad:
-                return tensor.detach()
             tensor.realize_cached_data()
         return tensor
 
@@ -287,11 +311,7 @@ class Tensor(Value):
         return data.device
 
     def backward(self, out_grad=None):
-        out_grad = (
-            out_grad
-            if out_grad
-            else init.ones(*self.shape, dtype=self.dtype, device=self.device)
-        )
+        out_grad = out_grad if out_grad else Tensor(numpy.ones(self.shape))
         compute_gradient_of_variables(self, out_grad)
 
     def __repr__(self):
@@ -308,54 +328,54 @@ class Tensor(Value):
 
     def __add__(self, other):
         if isinstance(other, Tensor):
-            return ops.EWiseAdd()(self, other)
+            return needle.ops.EWiseAdd()(self, other)
         else:
-            return ops.AddScalar(other)(self)
+            return needle.ops.AddScalar(other)(self)
 
     def __mul__(self, other):
         if isinstance(other, Tensor):
-            return ops.EWiseMul()(self, other)
+            return needle.ops.EWiseMul()(self, other)
         else:
-            return ops.MulScalar(other)(self)
+            return needle.ops.MulScalar(other)(self)
 
     def __pow__(self, other):
         if isinstance(other, Tensor):
-            return ops.EWisePow()(self, other)
+            raise NotImplementedError()
         else:
-            return ops.PowerScalar(other)(self)
+            return needle.ops.PowerScalar(other)(self)
 
     def __sub__(self, other):
         if isinstance(other, Tensor):
-            return ops.EWiseAdd()(self, ops.Negate()(other))
+            return needle.ops.EWiseAdd()(self, needle.ops.Negate()(other))
         else:
-            return ops.AddScalar(-other)(self)
+            return needle.ops.AddScalar(-other)(self)
 
     def __truediv__(self, other):
         if isinstance(other, Tensor):
-            return ops.EWiseDiv()(self, other)
+            return needle.ops.EWiseDiv()(self, other)
         else:
-            return ops.DivScalar(other)(self)
+            return needle.ops.DivScalar(other)(self)
 
     def __matmul__(self, other):
-        return ops.MatMul()(self, other)
+        return needle.ops.MatMul()(self, other)
 
     def matmul(self, other):
-        return ops.MatMul()(self, other)
+        return needle.ops.MatMul()(self, other)
 
     def sum(self, axes=None):
-        return ops.Summation(axes)(self)
+        return needle.ops.Summation(axes)(self)
 
     def broadcast_to(self, shape):
-        return ops.BroadcastTo(shape)(self)
+        return needle.ops.BroadcastTo(shape)(self)
 
     def reshape(self, shape):
-        return ops.Reshape(shape)(self)
+        return needle.ops.Reshape(shape)(self)
 
     def __neg__(self):
-        return ops.Negate()(self)
+        return needle.ops.Negate()(self)
 
     def transpose(self, axes=None):
-        return ops.Transpose(axes)(self)
+        return needle.ops.Transpose(axes)(self)
 
     __radd__ = __add__
     __rmul__ = __mul__
@@ -378,9 +398,17 @@ def compute_gradient_of_variables(output_tensor, out_grad):
     # Traverse graph in reverse topological order given the output_node that we are taking gradient wrt.
     reverse_topo_order = list(reversed(find_topo_sort([output_tensor])))
 
+    # algorithm straight from notebook
     for node in reverse_topo_order:
-        adjoint = sum_node_list(node_to_output_grads_list[node])
-        
+        adjoint = sum_node_list(node_to_output_grads_list[node]) # sum the gradients from all output nodes
+        node.grad = adjoint
+        if node.requires_grad:
+            # Compute gradient contributions to each input node
+            input_grads = node.op.gradient_as_tuple(adjoint, node)
+            for i, input_node in enumerate(node.inputs):
+                if input_node not in node_to_output_grads_list: # if input node not already visited, initialize
+                    node_to_output_grads_list[input_node] = [] 
+                node_to_output_grads_list[input_node].append(input_grads[i]) # propagate current adjoint to its inputs
 
 def find_topo_sort(node_list: List[Value]) -> List[Value]:
     """Given a list of nodes, return a topological sort list of nodes ending in them.

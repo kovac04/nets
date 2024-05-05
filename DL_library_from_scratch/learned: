@@ -1,0 +1,32 @@
+    Transpose Gradient: 
+we need to tranpose it back to its original shape so the gradients can be computed, nothing else.
+This is done by just inversing the permutation, which we can do by following in which index is each one of the axes:
+
+1. Identifying the Original Permutation:
+
+    When you perform a transpose operation, you specify a permutation of the axes. For instance, if your tensor originally has axes indexed as (0, 1, 2), and you transpose it to (2, 0, 1), then this list (2, 0, 1) is your permutation.
+
+2. Creating the Inverse Permutation:
+
+    To reverse this permutation, you need to determine where each index from the original tensor ends up in the transposed tensor, and then invert that mapping.
+    The inverse permutation specifies the positions of the indices in the original tensor that correspond to each axis of the transposed tensor.
+
+3. Constructing the inverse permutation:
+
+    Go through each index in the original order (0, 1, 2).
+    Determine where each index appears in the permutation. For the permutation (2, 0, 1):
+        Index 0 from the original tensor is now in position 1.
+        Index 1 is now in position 2.
+        Index 2 is now in position 0.
+    Thus, the inverse permutation that will reverse (2, 0, 1) is (1, 2, 0).
+
+=======================================================
+
+    Broadcast gradient:
+
+=======================================================
+
+    Summation gradient: 
+Do 2 things:
+1. Make sure that the collapsed dimension is indeed present as "1". E.g. if we have a 2d tensor with shape (3,4) and we sum with dim=1, we might end up with (3,). In this case we want to go to the collapsed dim and set it to 1, producing result of (3,1)
+2. Broadcast the collapsed dimension to the size it was before summation/collapse. This is done by looking at the shape of node's inputs.
