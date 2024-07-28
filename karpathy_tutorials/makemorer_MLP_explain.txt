@@ -1,6 +1,0 @@
-How does C[X] work?
-X is a 32,3 matrix, consisting of 32 inputs, with 3 context chars each.
-
-C is an embedding matrix, that has 27 rows, 1 for each token/char, and its corresponding embedding (2d vector)
-
-If X[0] is [0, 1, 2] (meaning the first 3 chars of context), then C[X[0]] would be a tensor formed by stacking the 0th, 1st, and 2nd rows of C on top of each other, resulting in a 3x2 matrix. This takes out the correct embeddings for each character, in each 3-char long context, across all input data X. When this operation is applied to all contexts in X, you get a tensor of shape [32, 3, 2] (assuming you have 32 such contexts generated), where 32 is the total number of such extracted contexts, 3 is the block_size, and 2 is the dimensionality of each embedding.
