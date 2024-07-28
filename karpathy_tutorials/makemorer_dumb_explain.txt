@@ -1,0 +1,26 @@
+How does this work?
+
+
+1. We want to create a "language model" that can create new, name-like words.
+2. Start with a text file with the names that are the training data.
+3. Add start “.” and end “.” tokens so we know when the name should start and stop.
+4. Create the dataset:
+Collect each bi-gram (2 char/token sequence), and for each name in the training set:
+	- convert both chars into integers (# in the alphabet), and add them to their respective lists (xs and ys)
+	- this gives us the inputs and the labels
+5. Run gradient descent:
+	-go through all the names and one hot encode with 27 classes all xs to get a (num_examples, 27) tensor
+	-get the logits by matrix multiplication with weight matrix W, xenc@W
+	-exponentiate those logits, to get something like “counts” that predicts how many times each input was followed by each of other 27 letters.
+	-do the previous step, because now we get the probability distributions over the next char, for each char in our input sequence. This, we use the evaluate to see if the prediction is good.
+	-after exponentiating the logits and getting the counts, get probabilities (probs matrix) by dividing each element in the “counts” tensor, by its row’s sum.
+	-calculate the loss (nll) = : 	
+		-get the probabilities from previous step, by indexing into probs matrix with all input chars (torch.arange(xs.nelement(), ys)
+			This is the vectorized version of: probs[0,5], probs[1,13], probs[2,13]…
+			For all inputs (rows in the probs matrix), get their respective y’s. it will be like: probs[0,y[0]],  probs[1, [y[1]], [2, y[2]]…
+		-log these probabilities
+		-and get their average
+		-add regularization term:  0.01*(W**2).mean() as well 
+
+	-zero out the gradient, and call loss.backward() to run backprop to weights matrix
+	-move a little towards the minimum

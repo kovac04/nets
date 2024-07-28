@@ -30,3 +30,6 @@ This is done by just inversing the permutation, which we can do by following in 
 Do 2 things:
 1. Make sure that the collapsed dimension is indeed present as "1". E.g. if we have a 2d tensor with shape (3,4) and we sum with dim=1, we might end up with (3,). In this case we want to go to the collapsed dim and set it to 1, producing result of (3,1)
 2. Broadcast the collapsed dimension to the size it was before summation/collapse. This is done by looking at the shape of node's inputs.
+
+=======================================================
+
