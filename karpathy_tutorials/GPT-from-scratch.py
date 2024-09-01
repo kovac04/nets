@@ -20,7 +20,6 @@ train_data = data[:n]
 val_data = data[n:]
 eval_iters = 200
 n_embed = 65
-#n_heads = 4
 block_size = 32
 lr = 1e-2
 dropout = 0.1
@@ -49,9 +48,6 @@ def get_batch(split, batch_size=16):
     y = torch.stack([data[index+1:index+block_size+1] for index in ix])
     return x,y
 
-# what does head do?
-# with Q,K,V matrices we use the calculations to obtain the probabilites Z that have same shape as V.
-# nn.linear takes args: # features, # neurons.
 class Head(nn.Module):
     def __init__(self,head_size):
         super().__init__()
@@ -61,34 +57,28 @@ class Head(nn.Module):
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         
     def forward(self, x):
-        B,T,C = x.shape # C is now head_size = # features per char = 8
+        B,T,C = x.shape
         q = self.Wq(x)
         k = self.Wk(x)
         v = self.Wv(x)
-        attn = q @ k.transpose(-2,-1) * (C**-0.5)          #b,t,c @ b,c,t just want to switch last 2 dims of K. attn.shape -> b,t,t
-        #print(self.tril.shape, attn.shape)
+        attn = q @ k.transpose(-2,-1) * (C**-0.5)          #b,t,c @ b,c,t just want to switch last 2 dims of K; attn.shape -> b,t,t
         attn = attn.masked_fill(self.tril[:T][:T] == 0, float('-inf')) # we index through with :T,:T in case our input batch has sequences smaller than block_size
         attn = F.softmax(attn,dim=-1)
         self_attn = attn @ v       # b,t,t @ b,t,c -> b,t,c
-       # print(self_attn.shape)
         return self_attn
 
-# just concatenates the last set of vectors in self-attention output matrix Z. if we want the length of vectors representing chars to be n_embed, we must make 
-# head_size = n_embed // n_heads because at the end we are multiplying head_size by n_heads
 class MaskedMultiHeadAttention(nn.Module):
     def __init__(self, n_heads, head_size):
         super().__init__()
-        self.heads = [Head(head_size) for _ in range(n_heads)] # 32,8,16*4 -> where do i put batch size and context length together into 256?
-        self.proj = nn.Linear(n_embed-1, n_embed) # 64,65
+        self.heads = [Head(head_size) for _ in range(n_heads)]
+        self.proj = nn.Linear(n_embed-1, n_embed) # 64,65. Not good.
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        out = torch.cat([head(x) for head in self.heads] , dim=-1) # x = (batch_size,context_length , n_embed)
-        out = self.proj(out) # x@w = x.shape @ n_embed, n_embed = batch_size, context_length, n_embed = 32,8,65
-        out = self.dropout(out)
+        out = torch.cat([head(x) for head in self.heads] , dim=-1)
+        out = self.dropout(self.proj(out))
         return out
 
-# works on each char individually. Applied to matrix Z (self-attention output) -> (batch_size, context_length, n_embed) @ (n_embed, n_embed(could be diff.))
 class FeedForward(nn.Module):
     def __init__(self, n_embed):
         super().__init__()
@@ -107,7 +97,7 @@ class Block(nn.Module):
     
     def __init__(self, n_embed, n_heads):
         super().__init__()
-        head_size = n_embed // n_heads # -> 65  /    4   ->   16
+        head_size = n_embed // n_heads
         self.self_attn = MaskedMultiHeadAttention(n_heads, head_size)
         self.feedforward = FeedForward(n_embed)
         self.ln1 = nn.LayerNorm(n_embed)
@@ -122,8 +112,8 @@ class Block(nn.Module):
 class BigramLanguageModel(nn.Module):
     def __init__(self):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(vocab_size, vocab_size)
-        self.position_embedding_table = nn.Embedding(vocab_size, vocab_size)
+        self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
+        self.position_embedding_table = nn.Embedding(block_size, n_embed)
         self.blocks = nn.Sequential(
             Block(n_embed, n_heads=4),
             Block(n_embed, n_heads=4),
@@ -134,7 +124,7 @@ class BigramLanguageModel(nn.Module):
 
     def forward(self, x, targets=None):
         B,T = x.shape
-        x = self.token_embedding_table(x) + self.position_embedding_table(torch.arange(T)) # positional embeddings = number each char 0-7 lol
+        x = self.token_embedding_table(x) + self.position_embedding_table(torch.arange(block_size))
         x = self.blocks(x)
         logits = self.lm_head(x)
 
@@ -149,7 +139,7 @@ class BigramLanguageModel(nn.Module):
         
     def generate(self, chars_enc, max_new_tokens):
         for _ in range(max_new_tokens):
-            chars_enc_cond = chars_enc[:,-block_size:] # just want last block_size num of chars for context. as we generate chars, context will increase infinitely
+            chars_enc_cond = chars_enc[:,-block_size:] #just want last block_size # of chars for context; context will increase indefinitely
             logits, _ = self(chars_enc_cond)
             next_char_probs = logits[:,-1,:]
             next_char_probs = F.softmax(next_char_probs, dim=1)
@@ -162,11 +152,9 @@ class BigramLanguageModel(nn.Module):
 # training
 model = BigramLanguageModel()
 optimizer = optim.AdamW(model.parameters(),lr)
-eval_interval = 500
-max_iters = 10000
+eval_interval = 200
+max_iters = 1000
 for i in range(max_iters):
-    # if max_iters % 2 == 0:
-    #     optimizer.param_groups[0]['lr'] = 1e-3
     if i % eval_interval == 0:
         losses = estimate_loss()
         print(f"step {iter}: train loss {losses[0]:.4f}, val loss {losses[1]:.4f}")
@@ -177,5 +165,5 @@ for i in range(max_iters):
     loss.backward()
     optimizer.step()
 
-context = torch.zeros((1,block_size),dtype=torch.long) # this tensor column must match block_size
+context = torch.zeros((1,block_size),dtype=torch.long)
 print(decode(model.generate(context, max_new_tokens=1000)[0].tolist()))
